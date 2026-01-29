@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data'; // ★★★ これが絶対に必要です！ ★★★
+import 'dart:typed_data'; // 必須
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -13,7 +13,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
 // ★★★ ここにAPIキーを貼り直してください ★★★
-const String googleMapsApiKey = 'YOUR_API_KEY';
+const String googleMapsApiKey = 'AIzaSyDzd-cyeB0xm1DZQkMZkYNQCHZZ3CnHGDU';
 
 void main() {
   runApp(const EvHotelApp());
@@ -103,13 +103,14 @@ class _MapScreenState extends State<MapScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   String _selectedFilter = 'すべて';
-  String _statusMessage = "v8.0 Fixed Import";
+  String _statusMessage = "v9.0 Resized Icons";
 
   // カスタムアイコン保存用
   BitmapDescriptor? _iconTesla;
   BitmapDescriptor? _iconRapid;
   BitmapDescriptor? _iconNormal;
   BitmapDescriptor? _iconOther;
+  BitmapDescriptor? _iconMyLocation; // ★自分用の青いアイコンも自作する
 
   static const CameraPosition _kTokyoStation = CameraPosition(
     target: LatLng(35.681236, 139.767125),
@@ -124,31 +125,39 @@ class _MapScreenState extends State<MapScreen> {
     _determinePosition(silent: true);
   }
 
-  // ★アイコン作成
+  // ★アイコン作成（サイズを小さく調整！）
   Future<void> _generateCustomIcons() async {
-    _iconTesla = await _createMarkerBitmap(Colors.redAccent, "T");
-    _iconRapid = await _createMarkerBitmap(Colors.orange, "急");
-    _iconNormal = await _createMarkerBitmap(Colors.blue, "普");
-    _iconOther = await _createMarkerBitmap(Colors.purple, "他");
+    // ホテル用
+    _iconTesla = await _createMarkerBitmap(Colors.redAccent);
+    _iconRapid = await _createMarkerBitmap(Colors.orange);
+    _iconNormal = await _createMarkerBitmap(Colors.blue);
+    _iconOther = await _createMarkerBitmap(Colors.purple);
+    
+    // ★自分用（少し濃い青で区別）
+    _iconMyLocation = await _createMarkerBitmap(Colors.blueAccent);
+    
     setState(() {}); 
   }
 
-  Future<BitmapDescriptor> _createMarkerBitmap(Color color, String text) async {
+  // ★サイズを 100.0 -> 48.0 に変更して小さくしました
+  Future<BitmapDescriptor> _createMarkerBitmap(Color color) async {
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
-    const double size = 100.0;
+    
+    // ★サイズ変更：ここを小さくしました
+    const double size = 48.0; 
 
     final Paint paint = Paint()..color = color;
     final Paint borderPaint = Paint()
       ..color = Colors.white
-      ..strokeWidth = 10.0
+      ..strokeWidth = 4.0 // 枠線の太さも調整
       ..style = PaintingStyle.stroke;
 
-    canvas.drawCircle(const Offset(size / 2, size / 2), size / 2.5, paint);
-    canvas.drawCircle(const Offset(size / 2, size / 2), size / 2.5, borderPaint);
+    // 白いフチ付きの丸を描く
+    canvas.drawCircle(const Offset(size / 2, size / 2), size / 2.2, paint);
+    canvas.drawCircle(const Offset(size / 2, size / 2), size / 2.2, borderPaint);
 
     final ui.Image image = await pictureRecorder.endRecording().toImage(size.toInt(), size.toInt());
-    // ★ここで ByteData を使うために import 'dart:typed_data'; が必要でした
     final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
   }
@@ -228,7 +237,8 @@ class _MapScreenState extends State<MapScreen> {
         _userMarker = Marker(
           markerId: const MarkerId("my_location"),
           position: LatLng(position.latitude, position.longitude),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          // ★ここで自作の青いアイコンを使う（これで確実に青くなる！）
+          icon: _iconMyLocation ?? BitmapDescriptor.defaultMarker,
           infoWindow: const InfoWindow(title: "現在地"),
           zIndex: 1000,
         );
