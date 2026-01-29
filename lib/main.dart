@@ -139,13 +139,13 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {}); 
   }
 
-  // ★サイズを 100.0 -> 30.0 に変更して小さくしました
+  // ★サイズを 100.0 -> 15.0 に変更して小さくしました
   Future<BitmapDescriptor> _createMarkerBitmap(Color color) async {
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
     
     // ★サイズ変更：ここを小さくしました
-    const double size = 30.0; 
+    const double size = 15.0; 
 
     final Paint paint = Paint()..color = color;
     final Paint borderPaint = Paint()
