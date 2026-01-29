@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data'; // ★これを追加しました（これでエラーが消えます）
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -74,7 +76,7 @@ class EvHotelApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
       home: const MapScreen(),
     );
@@ -92,7 +94,7 @@ class _MapScreenState extends State<MapScreen> {
   final Completer<GoogleMapController> _controller = Completer();
   
   Set<Marker> _hotelMarkers = {}; 
-  Marker? _userMarker; // 手動の青いピン
+  Marker? _userMarker;
 
   List<Hotel> _allHotels = [];
   List<Hotel> _filteredHotels = [];
@@ -101,7 +103,13 @@ class _MapScreenState extends State<MapScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   String _selectedFilter = 'すべて';
-  String _statusMessage = "v5.0 Final Fix";
+  String _statusMessage = "v7.0 Custom Icons";
+
+  // カスタムアイコン保存用
+  BitmapDescriptor? _iconTesla;
+  BitmapDescriptor? _iconRapid;
+  BitmapDescriptor? _iconNormal;
+  BitmapDescriptor? _iconOther;
 
   static const CameraPosition _kTokyoStation = CameraPosition(
     target: LatLng(35.681236, 139.767125),
@@ -111,23 +119,52 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    _generateCustomIcons();
     _loadCsvData();
     _determinePosition(silent: true);
   }
 
-  // ピンの色判定
-  double _getPinColor(String evType) {
+  // ★アイコン作成
+  Future<void> _generateCustomIcons() async {
+    _iconTesla = await _createMarkerBitmap(Colors.redAccent, "T");
+    _iconRapid = await _createMarkerBitmap(Colors.orange, "急");
+    _iconNormal = await _createMarkerBitmap(Colors.blue, "普");
+    _iconOther = await _createMarkerBitmap(Colors.purple, "他");
+    setState(() {}); 
+  }
+
+  Future<BitmapDescriptor> _createMarkerBitmap(Color color, String text) async {
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    const double size = 100.0;
+
+    final Paint paint = Paint()..color = color;
+    final Paint borderPaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 10.0
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawCircle(const Offset(size / 2, size / 2), size / 2.5, paint);
+    canvas.drawCircle(const Offset(size / 2, size / 2), size / 2.5, borderPaint);
+
+    final ui.Image image = await pictureRecorder.endRecording().toImage(size.toInt(), size.toInt());
+    final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
+  }
+
+  BitmapDescriptor _getIconForType(String evType) {
     final t = evType.replaceAll('　', ' ').trim().toLowerCase();
+    
     if (t.contains('テスラ') || t.contains('tesla') || t.contains('supercharger')) {
-      return BitmapDescriptor.hueRed; 
+      return _iconTesla ?? BitmapDescriptor.defaultMarker;
     }
     if (t.contains('急速') || t.contains('chademo') || t.contains('fast')) {
-      return BitmapDescriptor.hueOrange;
+      return _iconRapid ?? BitmapDescriptor.defaultMarker;
     }
     if (t.contains('普通') || t.contains('200v') || t.contains('normal')) {
-      return BitmapDescriptor.hueAzure;
+      return _iconNormal ?? BitmapDescriptor.defaultMarker;
     }
-    return BitmapDescriptor.hueViolet;
+    return _iconOther ?? BitmapDescriptor.defaultMarker;
   }
 
   // 検索処理
@@ -170,7 +207,7 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // 現在地取得（青いピン手動作成）
+  // 現在地取得
   Future<void> _determinePosition({bool silent = false}) async {
     if (!mounted && !silent) return;
     setState(() { _statusMessage = "現在地を取得中..."; });
@@ -190,7 +227,8 @@ class _MapScreenState extends State<MapScreen> {
         _userMarker = Marker(
           markerId: const MarkerId("my_location"),
           position: LatLng(position.latitude, position.longitude),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue), // 青ピン
+          // 自分は青ピン(標準)
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
           infoWindow: const InfoWindow(title: "現在地"),
           zIndex: 1000,
         );
@@ -318,14 +356,13 @@ class _MapScreenState extends State<MapScreen> {
         return Marker(
           markerId: MarkerId(hotel.name),
           position: LatLng(hotel.lat, hotel.lng),
-          icon: BitmapDescriptor.defaultMarkerWithHue(_getPinColor(hotel.evType)),
+          icon: _getIconForType(hotel.evType),
           onTap: () => _showHotelDetails(hotel),
         );
       }).toSet();
     });
   }
 
-  // ★エラーになっていたメソッドを修正
   void _onSearchChanged(String query) {
     if (query.isEmpty) {
       setState(() { _isSearching = false; _searchResults = []; });
@@ -341,7 +378,6 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  // ★エラーになっていたメソッドを修正（検索送信）
   Future<void> _handleSearchSubmit(String query) async {
     if (_searchResults.isNotEmpty && _searchResults.length < 5) {
       _zoomToFitResults();
@@ -394,7 +430,6 @@ class _MapScreenState extends State<MapScreen> {
     ));
   }
 
-  // 詳細表示
   void _showHotelDetails(Hotel hotel) {
     String proxyImageUrl(String url) {
       if (url.isEmpty || !url.startsWith('http')) return "";
@@ -415,7 +450,7 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
     Widget sectionTitle(String title) {
-      return Padding(padding: const EdgeInsets.only(top: 16, bottom: 8), child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.purple)));
+      return Padding(padding: const EdgeInsets.only(top: 16, bottom: 8), child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue)));
     }
 
     showDialog(
@@ -486,7 +521,6 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // ★エラーになっていたメソッドを修正（フィルターチップ）
   Widget _buildFilterChip(String label) {
     final isSelected = _selectedFilter == label;
     return Padding(
@@ -501,15 +535,15 @@ class _MapScreenState extends State<MapScreen> {
           });
         },
         backgroundColor: Colors.white,
-        selectedColor: Colors.purple[100],
-        checkmarkColor: Colors.purple[800],
+        selectedColor: Colors.blue[100],
+        checkmarkColor: Colors.blue[800],
         labelStyle: TextStyle(
-          color: isSelected ? Colors.purple[900] : Colors.black87,
+          color: isSelected ? Colors.blue[900] : Colors.black87,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: isSelected ? Colors.purple : Colors.grey.shade300),
+          side: BorderSide(color: isSelected ? Colors.blue : Colors.grey.shade300),
         ),
       ),
     );
@@ -523,9 +557,8 @@ class _MapScreenState extends State<MapScreen> {
           GoogleMap(
             mapType: MapType.normal,
             initialCameraPosition: _kTokyoStation,
-            // ★ホテルのピンと、自分用の青いピンを合体させて表示
             markers: _hotelMarkers.union(_userMarker != null ? {_userMarker!} : {}),
-            myLocationEnabled: true, // 念のため純正機能もON
+            myLocationEnabled: true, 
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
             onMapCreated: (GoogleMapController controller) {
@@ -611,7 +644,7 @@ class _MapScreenState extends State<MapScreen> {
                 ),
                 const SizedBox(height: 8),
                 FloatingActionButton(
-                  backgroundColor: Colors.purple,
+                  backgroundColor: Colors.blue,
                   child: const Icon(Icons.my_location, color: Colors.white),
                   onPressed: () {
                     _determinePosition();
