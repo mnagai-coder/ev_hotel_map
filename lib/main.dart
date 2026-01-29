@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data'; // ★これを追加しました（これでエラーが消えます）
+import 'dart:typed_data'; // ★★★ これが絶対に必要です！ ★★★
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -13,7 +13,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
 // ★★★ ここにAPIキーを貼り直してください ★★★
-const String googleMapsApiKey = 'AIzaSyDzd-cyeB0xm1DZQkMZkYNQCHZZ3CnHGDU';
+const String googleMapsApiKey = 'YOUR_API_KEY';
 
 void main() {
   runApp(const EvHotelApp());
@@ -103,7 +103,7 @@ class _MapScreenState extends State<MapScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   String _selectedFilter = 'すべて';
-  String _statusMessage = "v7.0 Custom Icons";
+  String _statusMessage = "v8.0 Fixed Import";
 
   // カスタムアイコン保存用
   BitmapDescriptor? _iconTesla;
@@ -148,6 +148,7 @@ class _MapScreenState extends State<MapScreen> {
     canvas.drawCircle(const Offset(size / 2, size / 2), size / 2.5, borderPaint);
 
     final ui.Image image = await pictureRecorder.endRecording().toImage(size.toInt(), size.toInt());
+    // ★ここで ByteData を使うために import 'dart:typed_data'; が必要でした
     final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
   }
@@ -227,7 +228,6 @@ class _MapScreenState extends State<MapScreen> {
         _userMarker = Marker(
           markerId: const MarkerId("my_location"),
           position: LatLng(position.latitude, position.longitude),
-          // 自分は青ピン(標準)
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
           infoWindow: const InfoWindow(title: "現在地"),
           zIndex: 1000,
