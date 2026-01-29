@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data'; // 必須
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -103,14 +103,14 @@ class _MapScreenState extends State<MapScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   String _selectedFilter = 'すべて';
-  String _statusMessage = "v9.0 Resized Icons";
+  String _statusMessage = "v11.0 Size 30 & Blue for Location Only";
 
   // カスタムアイコン保存用
   BitmapDescriptor? _iconTesla;
   BitmapDescriptor? _iconRapid;
   BitmapDescriptor? _iconNormal;
   BitmapDescriptor? _iconOther;
-  BitmapDescriptor? _iconMyLocation; // ★自分用の青いアイコンも自作する
+  BitmapDescriptor? _iconMyLocation;
 
   static const CameraPosition _kTokyoStation = CameraPosition(
     target: LatLng(35.681236, 139.767125),
@@ -125,32 +125,32 @@ class _MapScreenState extends State<MapScreen> {
     _determinePosition(silent: true);
   }
 
-  // ★アイコン作成（サイズを小さく調整！）
+  // ★アイコン作成（色設定）
   Future<void> _generateCustomIcons() async {
-    // ホテル用
-    _iconTesla = await _createMarkerBitmap(Colors.redAccent);
-    _iconRapid = await _createMarkerBitmap(Colors.orange);
-    _iconNormal = await _createMarkerBitmap(Colors.blue);
-    _iconOther = await _createMarkerBitmap(Colors.purple);
+    // ホテル用（青は絶対に使わない）
+    _iconTesla = await _createMarkerBitmap(Colors.redAccent);   // 赤
+    _iconRapid = await _createMarkerBitmap(Colors.orange);      // オレンジ
+    _iconNormal = await _createMarkerBitmap(Colors.yellow);     // 黄色（普通充電）
+    _iconOther = await _createMarkerBitmap(Colors.purple);      // 紫
     
-    // ★自分用（少し濃い青で区別）
+    // 自分用（ここだけ青！）
     _iconMyLocation = await _createMarkerBitmap(Colors.blueAccent);
     
     setState(() {}); 
   }
 
-  // ★サイズを 100.0 -> 15.0 に変更して小さくしました
+  // ★サイズ設定：30.0 に変更
   Future<BitmapDescriptor> _createMarkerBitmap(Color color) async {
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
     
-    // ★サイズ変更：ここを小さくしました
-    const double size = 15.0; 
+    // ★サイズ修正：30.0
+    const double size = 30.0; 
 
     final Paint paint = Paint()..color = color;
     final Paint borderPaint = Paint()
       ..color = Colors.white
-      ..strokeWidth = 4.0 // 枠線の太さも調整
+      ..strokeWidth = 3.0 // 枠線の太さをサイズに合わせて調整
       ..style = PaintingStyle.stroke;
 
     // 白いフチ付きの丸を描く
@@ -237,7 +237,7 @@ class _MapScreenState extends State<MapScreen> {
         _userMarker = Marker(
           markerId: const MarkerId("my_location"),
           position: LatLng(position.latitude, position.longitude),
-          // ★ここで自作の青いアイコンを使う（これで確実に青くなる！）
+          // 自分だけ青！
           icon: _iconMyLocation ?? BitmapDescriptor.defaultMarker,
           infoWindow: const InfoWindow(title: "現在地"),
           zIndex: 1000,
@@ -606,9 +606,9 @@ class _MapScreenState extends State<MapScreen> {
                     children: [
                       _buildFilterChip('すべて'),
                       _buildFilterChip('急速'),
-                      _buildFilterChip('テスラ'),
                       _buildFilterChip('普通'),
                       _buildFilterChip('6kW'),
+                      _buildFilterChip('テスラ'),
                     ],
                   ),
                 ),
